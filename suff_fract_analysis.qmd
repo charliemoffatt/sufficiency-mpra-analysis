@@ -101,7 +101,8 @@ ggplot(data = gfp_ctrls, aes(x = n_pos, y = log2FoldChange, color = gene)) +
 #| eval: false
 suff_oligos <- read.fasta("/Users/christophermoffatt/Desktop/lab/peak-oligo/no_pcr_suf_oligos_uppercase.fasta", as.string = TRUE)
 suff_df <- tibble(name = names(suff_oligos), seq = paste(suff_oligos)) |>
-  select(name, seq)
+  select(name, seq) |>
+  rename(name = "oligo")
 og_oligos <- read.fasta("/Users/christophermoffatt/Desktop/lab/shuffle-mutation-mpra/ogoligos.fasta", as.string = TRUE)
 og_df <-  tibble(name = names(og_oligos), seq = paste(og_oligos)) |>
   select(name, seq)
@@ -126,16 +127,30 @@ wt_seq_df <- tibble(name = names(wt_le_seq), seq = paste(wt_le_seq)) |>
 ```{r, exploring}
 gfp_exp <- gfp_fc |>
   filter(which_mpra == "exp") |>
-  separate_wider_delim(oligo, "_", names = c("gene", "idxes"), too_many = "merge") |>
+  separate_wider_delim(oligo, "_", names = c("gene", "idxes"), too_many = "merge", cols_remove = FALSE) |>
   separate_wider_delim(idxes, "|", names = c("start", "end")) |>
   mutate(end = as.numeric(end),
          start = as.numeric(start),
-    span = (end - start) + 1)
+    span = (end - start) + 1,
+    chr_span = as.character(span)) |>
+  drop_na()
 
-
+#larger stretches of sequence localize better
+gfp_exp |>
+  filter(gene == "trak2" | gene == "net1"| gene == "trp53") |>
+ggplot(aes(x = factor(span), group = span, y = log2FoldChange)) +
+  geom_boxplot(outliers = F) +
+  theme_classic() +
+  facet_grid(~gene) +
+  xlab("LE sequence span")
 ```
 
-```{r, rolling-means}
+```{r, span-and-gene}
+gfp_exp |>
+ggplot(aes(x = chr_span, group = chr_span, y = log2FoldChange)) +
+  geom_boxplot() +
+  theme_classic() +
+  facet_grid(~gene)
 
 ```
 
