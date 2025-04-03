@@ -50,11 +50,12 @@ write.csv(gfpcts, "~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/gfp_cts.cs
 # make DESeq object
 gfpdso <- DESeqDataSetFromMatrix(countData = gfpcts, colData = gfpcoldat, design = ~rep+condition)
 gfpdds <- DESeq(gfpdso)
-gfpdds <- gfpdds[rowMins(counts(gfpdds)) > 20, ]
+gfpdds <- gfpdds[rowMins(counts(gfpdds)) > 10, ]
 gfp_norm_counts <- counts(gfpdds, normalized = TRUE)
 gfp_raw_counts <- counts(gfpdds, normalized = FALSE)
 #write.csv(gfp_norm_counts, "~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/gfp_counts_by_rep.csv")
 ```
+
 ```{r}
 gfp_norm_counts <- read_csv("~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/gfp_counts_by_rep.csv") %>%
   rename(...1 = "oligo")
@@ -63,14 +64,15 @@ gfp_pairwise <- cor(gfp_norm_counts, method = 'spearman')
 pheatmap(gfp_pairwise)
 ```
 ```{r}
+#| eval: false
 gfp_soma_vs_neurite <- results(gfpdds, contrast = c('condition', 'neurite', 'soma'))
 
 gfp_fc <- drop_na(data.frame(gfp_soma_vs_neurite)) %>%
   rownames_to_column(var = "oligo") %>%
   select(oligo, log2FoldChange, padj, baseMean) %>%
   mutate(which_mpra = case_when(
-    # grepl('_', oligo) ~ 'exp', no longer works ~> try doesn't start with ENS
-    # grepl('|', oligo) ~ 'ctrl'
+    grepl('_', oligo) ~ 'exp', 
+    grepl('ENS', oligo) ~ 'ctrl'
   ))
 write.csv(gfp_fc, "gfp_fc.csv")
 ggplot(data = gfp_fc, aes(x = log2FoldChange, y = -log10(padj), color = which_mpra)) +
@@ -79,12 +81,12 @@ ggplot(data = gfp_fc, aes(x = log2FoldChange, y = -log10(padj), color = which_mp
   theme_classic()
 ```
 
-```{r}
+```{r, check-ctrls}
+#| eval: false
 gfp_ctrls <- gfp_fc %>%
   filter(which_mpra == "ctrl") %>%
   separate_wider_delim(., cols = oligo, delim = "|", names = c('ensid', 'gene'), cols_remove = FALSE) %>%
   separate_wider_delim(., cols = ensid, delim = ".", names = c('ens', 'n_pos'), cols_remove = FALSE) %>%
-  #select(gene, n_pos, log2FoldChange) %>%
   filter(grepl("Cplx2|Trp53inp2|Net1|Gdf11|Rab13|Trak2|Cdc42bpg", gene))
 
 gfp_ctrls$n_pos  <- as.numeric(gfp_ctrls$n_pos)
@@ -96,6 +98,7 @@ ggplot(data = gfp_ctrls, aes(x = n_pos, y = log2FoldChange, color = gene)) +
 ```
 
 ```{r, for-chrisinta}
+#| eval: false
 suff_oligos <- read.fasta("/Users/christophermoffatt/Desktop/lab/peak-oligo/no_pcr_suf_oligos_uppercase.fasta", as.string = TRUE)
 suff_df <- tibble(name = names(suff_oligos), seq = paste(suff_oligos)) |>
   select(name, seq)
@@ -112,3 +115,27 @@ gfp_fc_c <- drop_na(data.frame(gfp_soma_vs_neurite_c)) %>%
 christina <- inner_join(gfp_fc_c, alloligos, by = 'oligo')
 write.csv(christina, "suff_fc.csv")
 ```
+I didn't include WT oligos in my MPRA on accident, so need to normalize to LEs in control MPRA pool
+```{r, norm-to-WT}
+wt_le_seq <- read.fasta("/Users/christophermoffatt/Desktop/lab/peak-oligo/LE_seqs.fasta", as.string = TRUE)
+wt_seq_df <- tibble(name = names(wt_le_seq), seq = paste(wt_le_seq)) |>
+  select(name, seq)
+## hmmm, POs not showing up :////
+```
+
+```{r, exploring}
+gfp_exp <- gfp_fc |>
+  filter(which_mpra == "exp") |>
+  separate_wider_delim(oligo, "_", names = c("gene", "idxes"), too_many = "merge") |>
+  separate_wider_delim(idxes, "|", names = c("start", "end")) |>
+  mutate(end = as.numeric(end),
+         start = as.numeric(start),
+    span = (end - start) + 1)
+
+
+```
+
+```{r, rolling-means}
+
+```
+
