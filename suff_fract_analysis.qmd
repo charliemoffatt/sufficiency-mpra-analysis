@@ -1,0 +1,35 @@
+---
+title: "Sufficiency MPRA analysis"
+format: html
+editor: source
+---
+
+
+```{r}
+library(tidyverse)
+library(Biostrings)
+library(readr)
+library(seqinr)
+library(DESeq2)
+library(ggplot2)
+library(pheatmap)
+library(stringr)
+library(RColorBrewer)
+library(zoo)
+library(rstatix)
+library(ggpubr)
+```
+
+Following shuffle/mutation analysis
+```{r}
+#| echo: false
+samplenames <- c('GFPS1', 'GFPS2', 'GFPS3', 'GFPS4', 'GFPN1', 'GFPN2', 'GFPN3', 'GFPN4', 'FFS1', 'FFS2', 'FFS3', 'FFS4', 'FFN1', 'FFN2', 'FFN3', 'FFN4')
+col_names <- c('oligo_id', 'total_reads')
+for(sample in samplenames){ 
+  assign(x = paste0(sample, "umis"), #variable name
+         value = read_tsv(paste0("~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/", sample, ".umis.txt"), #file path
+         col_names = c(col_names, sample), col_select = c('oligo_id', sample))) #name columns and select
+}
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
