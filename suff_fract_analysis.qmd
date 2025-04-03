@@ -6,6 +6,7 @@ editor: source
 
 
 ```{r}
+#| echo: false
 library(tidyverse)
 library(Biostrings)
 library(readr)
@@ -23,7 +24,7 @@ library(ggpubr)
 Following shuffle/mutation analysis
 ```{r}
 #| echo: false
-samplenames <- c('GFPS1', 'GFPS2', 'GFPS3', 'GFPS4', 'GFPN1', 'GFPN2', 'GFPN3', 'GFPN4', 'FFS1', 'FFS2', 'FFS3', 'FFS4', 'FFN1', 'FFN2', 'FFN3', 'FFN4')
+samplenames <- c('GFP_S1', 'GFP_S2', 'GFP_S3', 'GFP_S4', 'GFP_N1', 'GFP_N2', 'GFP_N3', 'GFP_N4', 'FF_S1', 'FF_S2', 'FF_S3', 'FF_S4', 'FF_N1', 'FF_N2', 'FF_N3', 'FF_N4')
 col_names <- c('oligo_id', 'total_reads')
 for(sample in samplenames){ 
   assign(x = paste0(sample, "umis"), #variable name
@@ -32,4 +33,82 @@ for(sample in samplenames){
 }
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+#| eval: false
+#| echo: false
+gfpcts <- list(GFP_S1umis, GFP_S2umis, GFP_S3umis, GFP_S4umis, GFP_N1umis, GFP_N2umis, GFP_N3umis, GFP_N4umis) %>%
+  purrr::reduce(full_join, by = 'oligo_id') %>%
+  column_to_rownames('oligo_id')
+gfpcts[is.na(gfpcts)] <- 0
+# make col data table
+condition <- c( rep('soma',4), rep('neurite', 4))
+type <- rep('paired-end', 8)
+rep <- factor(rep(c(1,2,3,4),2))
+gfpsamples <- c('GFP_S1', 'GFP_S2', 'GFP_S3', 'GFP_S4', 'GFP_N1', 'GFP_N2', 'GFP_N3', 'GFP_N4')
+gfpcoldat <- data.frame(condition, type, rep, row.names = gfpsamples)
+write.csv(gfpcts, "~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/gfp_cts.csv")
+# make DESeq object
+gfpdso <- DESeqDataSetFromMatrix(countData = gfpcts, colData = gfpcoldat, design = ~rep+condition)
+gfpdds <- DESeq(gfpdso)
+gfpdds <- gfpdds[rowMins(counts(gfpdds)) > 20, ]
+gfp_norm_counts <- counts(gfpdds, normalized = TRUE)
+gfp_raw_counts <- counts(gfpdds, normalized = FALSE)
+#write.csv(gfp_norm_counts, "~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/gfp_counts_by_rep.csv")
+```
+```{r}
+gfp_norm_counts <- read_csv("~/Desktop/lab/sufficiency-mpra-analysis/fract_umis/gfp_counts_by_rep.csv") %>%
+  rename(...1 = "oligo")
+
+gfp_pairwise <- cor(gfp_norm_counts, method = 'spearman')
+pheatmap(gfp_pairwise)
+```
+```{r}
+gfp_soma_vs_neurite <- results(gfpdds, contrast = c('condition', 'neurite', 'soma'))
+
+gfp_fc <- drop_na(data.frame(gfp_soma_vs_neurite)) %>%
+  rownames_to_column(var = "oligo") %>%
+  select(oligo, log2FoldChange, padj, baseMean) %>%
+  mutate(which_mpra = case_when(
+    # grepl('_', oligo) ~ 'exp', no longer works ~> try doesn't start with ENS
+    # grepl('|', oligo) ~ 'ctrl'
+  ))
+write.csv(gfp_fc, "gfp_fc.csv")
+ggplot(data = gfp_fc, aes(x = log2FoldChange, y = -log10(padj), color = which_mpra)) +
+  geom_point(shape = 1) +
+  scale_color_manual(values = c("#BBBBBB", "#009988")) +
+  theme_classic()
+```
+
+```{r}
+gfp_ctrls <- gfp_fc %>%
+  filter(which_mpra == "ctrl") %>%
+  separate_wider_delim(., cols = oligo, delim = "|", names = c('ensid', 'gene'), cols_remove = FALSE) %>%
+  separate_wider_delim(., cols = ensid, delim = ".", names = c('ens', 'n_pos'), cols_remove = FALSE) %>%
+  #select(gene, n_pos, log2FoldChange) %>%
+  filter(grepl("Cplx2|Trp53inp2|Net1|Gdf11|Rab13|Trak2|Cdc42bpg", gene))
+
+gfp_ctrls$n_pos  <- as.numeric(gfp_ctrls$n_pos)
+
+ggplot(data = gfp_ctrls, aes(x = n_pos, y = log2FoldChange, color = gene)) +
+  geom_line() +
+  theme_classic() +
+  facet_grid( ~ gene) 
+```
+
+```{r, for-chrisinta}
+suff_oligos <- read.fasta("/Users/christophermoffatt/Desktop/lab/peak-oligo/no_pcr_suf_oligos_uppercase.fasta", as.string = TRUE)
+suff_df <- tibble(name = names(suff_oligos), seq = paste(suff_oligos)) |>
+  select(name, seq)
+og_oligos <- read.fasta("/Users/christophermoffatt/Desktop/lab/shuffle-mutation-mpra/ogoligos.fasta", as.string = TRUE)
+og_df <-  tibble(name = names(og_oligos), seq = paste(og_oligos)) |>
+  select(name, seq)
+alloligos <- rbind(og_df, suff_df) |>
+  rename(name = "oligo")|>
+  mutate(seq = str_to_upper(seq))
+gfp_soma_vs_neurite_c <- results(gfpdds, contrast = c('condition', 'neurite', 'soma'))
+gfp_fc_c <- drop_na(data.frame(gfp_soma_vs_neurite_c)) %>%
+  rownames_to_column(var = "oligo") %>%
+  select(oligo, log2FoldChange, padj, baseMean)
+christina <- inner_join(gfp_fc_c, alloligos, by = 'oligo')
+write.csv(christina, "suff_fc.csv")
+```
