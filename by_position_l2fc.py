@@ -15,6 +15,7 @@ class oligo:
         self.span = []
         self.log2fc = []
         self.padj = []
+        self.pos_inc = []
 
     def __repr__(self):
         return self.name
@@ -36,5 +37,25 @@ def makeoligo(line):
     o.span = line[9]
     o.log2fc = line[5]
     o.padj = line[6]
+    py_start_idx = o.start - 1 #reindexinf
+    py_end_idx = o.end + 1 # adding 1 to compensate for range works in python vs R
+    o.pos_inc = list(range(py_start_idx, py_end_idx))
 
+def l2fc_of_pos(an_oligo, output_list, oligo_len = 260):
+    s = int(an_oligo.start) - 1 #reindex -> 0 to 259
+    e = int(an_oligo.end) - 1
+    
 
+#===================== read in data ==============================#
+with open("") as input:
+    oligos = []
+    gfp_l2fc = csv.reader(input, delimiter = ",")
+    next(gfp_l2fc) # skip header
+
+    for line in gfp_l2fc:
+        o = makeoligo(line)
+        oligos.append(o)
+
+l2fc_by_base = [ [] for i in range(260)]
+for i in range(0, len(oligos)):
+    o = oligos[i]
