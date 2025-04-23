@@ -20,20 +20,20 @@ class oligo:
     def __repr__(self):
         return self.name
 
-def makeoligo(line):
+def makeoligo(oligo, line):
     '''
     Parameters
     ----------
     line : a line of a csv file describing an oligo (gfp_fc_exp.csv)
+    oligo : an initialized oligo
 
     Returns
     -------
     o: a completed oligo, ready for downstream analysis
     '''
-    o = oligo(line[4]) #makes object, line[4] = oligo name
     o.gene = line[1]
-    o.start = line[2]
-    o.end = line[3]
+    o.start = int(line[2])
+    o.end = int(line[3])
     o.span = line[9]
     o.log2fc = line[5]
     o.padj = line[6]
@@ -47,13 +47,14 @@ def l2fc_of_pos(an_oligo, output_list, oligo_len = 260):
     
 
 #===================== read in data ==============================#
-with open("") as input:
+with open("gfp_fc_toy.csv") as input:
     oligos = []
     gfp_l2fc = csv.reader(input, delimiter = ",")
     next(gfp_l2fc) # skip header
 
     for line in gfp_l2fc:
-        o = makeoligo(line)
+        o = oligo(name = line[4])
+        o1 = makeoligo(oligo=o, line=line)
         oligos.append(o)
 
 l2fc_by_base = [ [] for i in range(260)]
