@@ -77,3 +77,17 @@ l2fc_by_base = [[] for i in range(260)]
 for i in range(0, len(oligos)):
     o = oligos[i]
     l2fc_of_pos(an_oligo = o, output_list = l2fc_by_base)
+#===================== export ========================#
+header = ["position", "gene", "span", "log2fc", "padj"]
+with open("l2fc_by_pos_span_suff.csv", "w") as output:
+    for i in header:
+        output.write(i + ",")
+    output.write("\n")
+
+    for i in range(260):
+        pos = i + 1 # base position, index-1/ R style indexing
+        o = l2fc_by_base[i]
+        for j in o:    #  position         gene             span
+            output.write(str(pos) + "," + str(j[0]) + "," + str(j[1]) + "," 
+                         + str(j[2]) + "," + str(j[3]) + '\n')
+#                           l2fc                padj
