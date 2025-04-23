@@ -37,13 +37,29 @@ def makeoligo(oligo, line):
     o.span = line[9]
     o.log2fc = line[5]
     o.padj = line[6]
-    py_start_idx = o.start - 1 #reindexinf
+    py_start_idx = o.start - 1 #reindexing 0 to 259
     py_end_idx = o.end + 1 # adding 1 to compensate for range works in python vs R
     o.pos_inc = list(range(py_start_idx, py_end_idx))
 
 def l2fc_of_pos(an_oligo, output_list, oligo_len = 260):
-    s = int(an_oligo.start) - 1 #reindex -> 0 to 259
-    e = int(an_oligo.end) - 1
+    '''
+    Parameters
+    ----------
+    an_oligo : an object of type oligo    
+    output_list :  [[] for i in range(oligo_len)] -> list to put gene, l2fc, and
+    span
+
+    Returns
+    -------
+    list filled out with all the log2FCs for each oligo a position is
+    included in; list of lists:
+        gene, log2fc, span 
+    tidyr style data
+    '''
+    out = [an_oligo.gene, an_oligo.span, an_oligo.log2fc, an_oligo.padj] # to be added to list
+    for i in an_oligo.pos_inc:
+        output_list[i].append(out)
+
     
 
 #===================== read in data ==============================#
@@ -56,7 +72,8 @@ with open("gfp_fc_toy.csv") as input:
         o = oligo(name = line[4])
         o1 = makeoligo(oligo=o, line=line)
         oligos.append(o)
-
-l2fc_by_base = [ [] for i in range(260)]
+#===================== convert lines of csv file to list of lists=====#
+l2fc_by_base = [[] for i in range(260)]
 for i in range(0, len(oligos)):
     o = oligos[i]
+    l2fc_of_pos(an_oligo = o, output_list = l2fc_by_base)
