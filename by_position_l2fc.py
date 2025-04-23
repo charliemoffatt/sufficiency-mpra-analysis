@@ -38,7 +38,7 @@ def makeoligo(oligo, line):
     o.log2fc = line[5]
     o.padj = line[6]
     py_start_idx = o.start - 1 #reindexing 0 to 259
-    py_end_idx = o.end + 1 # adding 1 to compensate for range works in python vs R
+    py_end_idx = o.end  
     o.pos_inc = list(range(py_start_idx, py_end_idx))
 
 def l2fc_of_pos(an_oligo, output_list, oligo_len = 260):
@@ -63,7 +63,7 @@ def l2fc_of_pos(an_oligo, output_list, oligo_len = 260):
     
 
 #===================== read in data ==============================#
-with open("gfp_fc_toy.csv") as input:
+with open("gfp_fc_exp.csv") as input:
     oligos = []
     gfp_l2fc = csv.reader(input, delimiter = ",")
     next(gfp_l2fc) # skip header
